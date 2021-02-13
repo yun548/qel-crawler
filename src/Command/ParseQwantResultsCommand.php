@@ -78,6 +78,8 @@ class ParseQwantResultsCommand extends Command
 
         $io->progressFinish();
         $io->info("Finished parsing results");
+
+        return 0;
     }
 
     protected function getSearchResults(string $word): array
