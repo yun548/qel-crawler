@@ -3,19 +3,21 @@
 
 namespace App\Command;
 
+
 use App\Entity\SearchResult;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class ParseQwantResultsCommand extends Command
+class ParseEcosiaResultsCommand extends Command
 {
-    protected const BASE_URL = "https://api.qwant.com/api/search/web?count=10&t=web&safesearch=1&locale=fr_FR&uiv=4&q=";
+    protected const BASE_URL = "https://www.ecosia.org/search?q=";
 
     protected HttpClientInterface $client;
 
@@ -36,7 +38,7 @@ class ParseQwantResultsCommand extends Command
     protected function configure()
     {
         $this
-            ->setName('app:parse:qwant')
+            ->setName('app:parse:ecosia')
             ->setDescription('Parse searches results and populates the database')
             ->addArgument('file', InputArgument::REQUIRED, "Translation file")
         ;
@@ -60,18 +62,18 @@ class ParseQwantResultsCommand extends Command
         foreach($words as $word) {
             $word = substr($word, 0, -1);
             $results = $this->getSearchResults($word);
-            foreach ($results as $result) {
+            foreach ($results as $position => $result) {
                 $searchResult = new SearchResult();
-                $searchResult->setUrl($result['url'])
-                    ->setSearchEngine(SearchResult::ENGINE_QWANT)
+                $searchResult->setUrl($result)
+                    ->setSearchEngine(SearchResult::ENGINE_ECOSIA)
                     ->setQuery($word)
-                    ->setPosition($result['position']);
+                    ->setPosition($position);
 
                 $this->entityManager->persist($searchResult);
             }
+
             $this->entityManager->flush();
             $this->entityManager->clear(SearchResult::class);
-
 
             $io->progressAdvance();
         }
@@ -88,13 +90,11 @@ class ParseQwantResultsCommand extends Command
             ],
         ]);
 
-        $content = json_decode($response->getContent(), true);
+        $crawler = new Crawler($response->getContent());
+        $results = $crawler->filter('.result-url')->each(function (Crawler $c) {
+            return trim($c->text());
+        });
 
-        return array_map(function (array $item) {
-            return [
-                'url' => $item['url'],
-                'position' => $item['position']
-            ];
-        }, $content['data']['result']['items']);
+        return $results;
     }
 }
