@@ -16,9 +16,9 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class ParseEcosiaResultsCommand extends Command
+class ParseBingResultsCommand extends Command
 {
-    protected const BASE_URL = "https://www.ecosia.org/search?q=";
+    protected const BASE_URL = "https://www.bing.com/search?q=";
 
     protected HttpClientInterface $client;
 
@@ -39,7 +39,7 @@ class ParseEcosiaResultsCommand extends Command
     protected function configure()
     {
         $this
-            ->setName('app:parse:ecosia')
+            ->setName('app:parse:bing')
             ->setDescription('Parse searches results and populates the database')
             ->addArgument('file', InputArgument::REQUIRED, "Translation file")
         ;
@@ -66,9 +66,9 @@ class ParseEcosiaResultsCommand extends Command
             foreach ($results as $position => $result) {
                 $searchResult = new SearchResult();
                 $searchResult->setUrl($result)
-                    ->setSearchEngine(SearchResult::ENGINE_ECOSIA)
+                    ->setSearchEngine(SearchResult::ENGINE_BING)
                     ->setQuery($word)
-                    ->setPosition($position);
+                    ->setPosition($position + 1);
 
                 $this->entityManager->persist($searchResult);
             }
@@ -92,8 +92,8 @@ class ParseEcosiaResultsCommand extends Command
         ]);
 
         $crawler = new Crawler($response->getContent());
-        $results = $crawler->filter('.result-url')->each(function (Crawler $node) {
-            return trim($node->text());
+        $results = $crawler->filter('.b_algo > h2 > a')->each(function (Crawler $node, $i) {
+            return $node->attr('href');
         });
 
         return $results;

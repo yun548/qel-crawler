@@ -14,6 +14,8 @@ class SearchResult
 
     public const ENGINE_ECOSIA = 'ecosia';
 
+    public const ENGINE_BING = 'bing';
+
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
